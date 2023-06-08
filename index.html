@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload file to IPFS through Pinata API</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>Upload file to IPFS through Pinata API</h2>
+  <form action="" id="form">
+    <input type="file" name="fileInput" id="fileInput">
+    <input type="submit" value="Upload" name="Upload" id="upload">
+    <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+    <p id="message"></p>
+  </form>
+</body>
+<script>
+const JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiIzODJmMmVjOC1hMzYwLTQ2ZjAtYTRhYS02MDBlNzU2YTIwNmQiLCJlbWFpbCI6ImNvbnNlcXVlbnRydWJiZXJzQHByb3Rvbi5tZSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaW5fcG9saWN5Ijp7InJlZ2lvbnMiOlt7ImlkIjoiRlJBMSIsImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxfSx7ImlkIjoiTllDMSIsImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxfV0sInZlcnNpb24iOjF9LCJtZmFfZW5hYmxlZCI6ZmFsc2UsInN0YXR1cyI6IkFDVElWRSJ9LCJhdXRoZW50aWNhdGlvblR5cGUiOiJzY29wZWRLZXkiLCJzY29wZWRLZXlLZXkiOiJhYWVjMjI4ZjZjNjI0MTRiNjdmNyIsInNjb3BlZEtleVNlY3JldCI6ImQzZjgyNzBiY2FjOWUwZGY1NTA4ZjNmY2MyMTVlMjU2NTllNzc3YWU4ZWI3Y2I5N2EyN2ZmMTFiOTA2Y2Q3YWYiLCJpYXQiOjE2ODYyMzI4MTN9.uT1yR5G4HSPThK6IX0oL0O7ytVbTfs4q_L4-eWsNddM'
+
+const form = document.getElementById("form");
+const fileInput = document.getElementById("fileInput");
+const messagePara = document.getElementById("message");
+const loader = document.getElementsByClassName("lds-ring")[0];
+
+document.addEventListener("click", async e => {
+  if (e.target.id === "upload") {
+    e.preventDefault();
+    const file = fileInput.files[0];
+
+    if (!file) {
+      setMessage("Select a file to upload.", "brown")
+      return;
+    }
+
+    pinFileToIPFS(file, JWT);
+  }
+});
+
+function setMessage (message, color) {
+  messagePara.style.color = color
+  messagePara.innerHTML = message;
+}
+
+const pinFileToIPFS = async (file, JWT) => {
+  const myHeaders = new Headers();
+  myHeaders.append("Authorization", `Bearer ${JWT}`);
+
+  const formdata = new FormData();
+  formdata.append("file", file, file.name);
+
+  const requestOptions = {
+    method: 'POST',
+    headers: myHeaders,
+    body: formdata,
+    redirect: 'follow'
+  };
+
+  messagePara.innerHTML = "";
+  loader.style.display = "block";
+
+  fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", requestOptions)
+    .then(response => {
+      return response.json();
+    })
+    .then(result => {
+      loader.style.display = "none";
+
+      if (Object.keys(result).includes("error")) {
+        console.error(result.error)
+        setMessage("Upload failed. " + result.error.details, "red");
+        return;
+      }
+
+      const isDuplicateText = result.isDuplicate ? "It's a duplicate." : "";
+      let message = `
+        File uploaded.
+        ${isDuplicateText}
+        <a
+          target="_blank" rel="noopener noreferrer"
+          href='https://beige-colossal-snail-501.mypinata.cloud/ipfs/${result.IpfsHash}'
+        >
+          Link to file
+        </a>
+      `;
+
+      setMessage(message,
+        "green"
+      );
+    })
+    .catch(error => {
+      loader.style.display = "none";
+      setMessage("Upload failed.", "red");
+      console.error(error);
+    });
+
+  }
+</script>
+</html>
